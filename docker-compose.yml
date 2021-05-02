@@ -1,0 +1,45 @@
+version: '2.4'
+
+x-healthcheck-timing: &healthcheck-timing
+  interval: 5s
+  retries: 24
+
+services:
+  backend:
+    restart: always
+    command:
+      - npm
+      - run
+      - dev
+    build:
+      context: ./
+    ports:
+      - '4000:80'
+      - '5600:9229'
+    volumes:
+      - './src:/usr/src/app/src:rw'
+      - './prisma:/usr/src/app/prisma:rw'
+    environment: 
+      NODE_ENV: development
+      POSTGRES_URL: 'postgresql://prisma:prisma@postgres/backend'
+    depends_on: 
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:13.2
+    ports:
+      - '9999:5432'
+    volumes:
+      - ./prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment: 
+      POSTGRES_USER: prisma
+      POSTGRES_PASSWORD: prisma
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready --username prisma']
+      <<: *healthcheck-timing
+  
+volumes:
+  postgres:
+    name: backend
+
